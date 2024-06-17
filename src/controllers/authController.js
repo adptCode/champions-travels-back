@@ -69,7 +69,7 @@ export const login = async (req, res) => {
     if (!user) {
       return res.status(401).json({
         code: -25,
-        message: 'user No exist'
+        message: 'user does not exist'
       });
     }
 
@@ -77,7 +77,7 @@ export const login = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({
         code: -5,
-        message: 'Credenciales incorrectas'
+        message: 'Invalid credentials'
       });
     }
 
@@ -98,7 +98,8 @@ export const login = async (req, res) => {
         user: {
           first_name: user.first_name,
           last_name: user.last_name,
-          email: user.email
+          email: user.email,
+          role: user.role
         } 
       }
     });
@@ -106,7 +107,7 @@ export const login = async (req, res) => {
     console.error(error);
     res.status(500).json({
       code: -100,
-      message: 'Ha ocurrido un error al iniciar sesión',
+      message: 'An error occurred during login',
       error: error
     });
   }
