@@ -12,19 +12,23 @@ import { esPar, contraseniasCoinciden } from '../utils/utils.js';
 const clientURL = process.env.CLIENT_URL;
 
 export const register = async (req, res) => {
+  
   try {
     const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
+      console.error("Validation errors:", errors.array());
       return res.status(400).json({ errors: errors.array() });
     }
-   
-    const { email, password, first_name, last_name, birth_date } = req.body;
+    
+    const { email, password, first_name, last_name, birth_date } = req.body;  
+      
     const existingUser = await User.findOne({ where: { email }});
     if (existingUser) {
       return res.status(400).json({
-        code: -2,
-        message: 'Ya existe un usuario con el mismo correo electrónico'
+        errors: [
+          { path: 'email', code: -2, msg: 'Email already exists' }
+        ],
       });
     }
 
