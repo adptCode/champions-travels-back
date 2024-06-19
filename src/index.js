@@ -9,7 +9,12 @@ import testRoutes from './routes/testRoutes.js';
 import { testConnection } from './db.js';
 import dotenv from 'dotenv';
 import { insertInitialData } from './start_data.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 dotenv.config();
+
+
 
 const app = express();
 
@@ -22,11 +27,18 @@ app.use(cors({
 //header and populate req.cookies with an object keyed by the cookie names
 app.use(cookieParser());
 
+
 // Middleware para analizar el cuerpo de las solicitudes con formato JSON
 app.use(express.json());
 
 // Middleware para analizar el cuerpo de las solicitudes con datos de formulario
 app.use(express.urlencoded({ extended: true })); // Para analizar datos de formularios en el cuerpo de la solicitud
+
+const __filename=fileURLToPath(import.meta.url);
+const __dirname=path.dirname(__filename)
+
+// Servir archivos estáticos desde la carpeta "uploads"
+app.use("/uploads", express.static(path.join(__dirname,"uploads")));
 
 await testConnection();
 await insertInitialData();
@@ -35,7 +47,6 @@ await insertInitialData();
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/events', eventRoutes);
-
 app.use('/test', testRoutes);
 
 app.get('/', (req, res) => {

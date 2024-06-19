@@ -49,6 +49,7 @@ export const register = async (req, res) => {
     res.status(200).json({
       code: 1,
       message: 'Usuario registrado correctamente',
+      data: { token: accessToken }
     });
   } catch (error) {
     console.error(error);
@@ -72,16 +73,18 @@ export const login = async (req, res) => {
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(401).json({
-        code: -25,
-        message: 'user does not exist'
+        errors: [
+          { param: 'email', code: -25, message: 'user does not exist' }
+        ]       
       });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({
-        code: -5,
-        message: 'Invalid credentials'
+        errors: [
+          { param: 'password', code: -5, message: 'Invalid credentials' }
+        ]       
       });
     }
 
@@ -104,7 +107,8 @@ export const login = async (req, res) => {
           last_name: user.last_name,
           email: user.email,
           role: user.role
-        } 
+        },
+        token: accessToken 
       }
     });
   } catch (error) {

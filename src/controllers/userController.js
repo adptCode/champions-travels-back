@@ -4,6 +4,7 @@ import { validationResult } from 'express-validator';
 import fs from 'fs';
 import path from 'path';
 
+
 export const getUser = async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
@@ -25,12 +26,13 @@ export const getUser = async (req, res) => {
       city: user.city,
       country: user.country,
       email: user.email,
-      profile_picture: user.profile_picture,
+      profile_picture: user.profile_picture ?  `${req.protocol}://${req.get('host')}/uploads/${user.profile_picture}` : null,
       preferences: user.Preferences.map(pref => pref.team_name),
       role: user.role,
       created_at: user.created_at,
       updated_at: user.updated_at
     };
+    console.log(userData.profile_picture)
 
     res.status(200).json({
       code: 1,
@@ -67,7 +69,7 @@ export const updateUser = async (req, res) => {
     if (birth_date) {
       const birthDate = new Date(birth_date);
       const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
+      let age = today.getFullYear() - birthDate.getFullYear();
       if (today.getMonth() < birthDate.getMonth() || (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate())) {
         age--;
       }
@@ -109,6 +111,7 @@ export const updateUser = async (req, res) => {
   }
 };
 
+/*
 export const uploadPhoto = async (req, res) => {
   try {
     const rutaArchivo = "./src/uploads/";
@@ -143,6 +146,7 @@ export const uploadPhoto = async (req, res) => {
     res.status(200).json({
       code: 1,
       message: "Archivo subido correctamente: " + req.file.originalname,
+      data: { profile_picture: req.user.profile_picture }
     });
   } catch (err) {
     if (err.code == "LIMIT_FILE_SIZE") {
@@ -153,6 +157,109 @@ export const uploadPhoto = async (req, res) => {
 
     res.status(500).send({
       message: `No se pudo subir el archivo: ${req.file.originalname}. ${err}`,
+      error: `${err}`
+    });
+  }
+};
+*/
+
+export const uploadPhoto = async (req, res) => {
+  try {
+    const rutaArchivo = "./src/uploads/";
+
+    if (!req.file) {
+      return res.status(400).json({
+        code: -101,
+        message: 'Por favor suba un archivo!'
+      });
+    }
+
+    const user = await User.findByPk(req.user.id);
+
+    if (user.profile_picture) {
+      const oldFilePath = path.join(rutaArchivo, user.profile_picture);
+
+      fs.access(oldFilePath, fs.constants.F_OK, (err) => {
+        if (!err) {
+          fs.unlink(oldFilePath, (err) => {
+            if (err) {
+              console.error('Error al eliminar el archivo viejo', err);
+            }
+          });
+        }
+      });
+    }
+
+    user.profile_picture = req.file.filename;
+    await user.save();
+
+    res.status(200).json({
+      code: 1,
+      message: "Archivo subido correctamente: " + req.file.originalname,
+      data: {
+        profile_picture: user.profile_picture
+      }
+    });
+  } catch (err) {
+    if (err.code == "LIMIT_FILE_SIZE") {
+      return res.status(500).send({
+        message: "El tamaño del archivo no puede ser mayor a 2MB!",
+      });
+    }
+
+    res.status(500).send({
+      message: `No se pudo subir el archivo: ${req.file.originalname}. ${err}`,
+      error: `${err}`
+    });
+  }
+};
+
+export const deletePhoto = async (req, res) => {
+  try {
+    const rutaArchivo = "./src/uploads/";
+    const user = await User.findByPk(req.user.id);
+
+    if (!user || !user.profile_picture) {
+      return res.status(400).json({
+        code: -104,
+        message: "No hay foto para eliminar",
+      });
+    }
+
+    const filePath = path.join(rutaArchivo, user.profile_picture);
+
+    fs.access(filePath, fs.constants.F_OK, (err) => {
+      if (err) {
+        console.error('Error al acceder al archivo', err);
+        return res.status(500).json({
+          code: -103,
+          message: 'Error al acceder al archivo',
+          error: err
+        });
+      }
+
+      fs.unlink(filePath, async (err) => {
+        if (err) {
+          console.error('Error al eliminar el archivo', err);
+          return res.status(500).json({
+            code: -103,
+            message: 'Error al eliminar el archivo',
+            error: err
+          });
+        }
+
+        user.profile_picture = null;
+        await user.save();
+
+        res.status(200).json({
+          code: 1,
+          message: "Foto eliminada correctamente",
+        });
+      });
+    });
+  } catch (err) {
+    res.status(500).send({
+      message: `No se pudo eliminar la foto. ${err}`,
       error: `${err}`
     });
   }
