@@ -111,57 +111,6 @@ export const updateUser = async (req, res) => {
   }
 };
 
-/*
-export const uploadPhoto = async (req, res) => {
-  try {
-    const rutaArchivo = "./src/uploads/";
-
-    if (req.file == undefined) {
-      return res.status(400).json({
-        code: -101,
-        message: 'Por favor suba un archivo!'
-      });
-    }
-
-    if (req.user.profile_picture) {
-      fs.access(rutaArchivo + req.user.profile_picture, fs.constants.F_OK, (err) => {
-        if (!err) {
-          fs.unlink(rutaArchivo + req.user.profile_picture, (err) => {
-            if (err) {
-              console.error('Error al eliminar el archivo', err);
-              return res.status(500).json({
-                code: -103,
-                message: 'Error al eliminar el archivo',
-                error: err
-              });
-            }
-          });
-        }
-      });
-    }
-
-    req.user.profile_picture = req.file.filename;
-    await req.user.save();
-
-    res.status(200).json({
-      code: 1,
-      message: "Archivo subido correctamente: " + req.file.originalname,
-      data: { profile_picture: req.user.profile_picture }
-    });
-  } catch (err) {
-    if (err.code == "LIMIT_FILE_SIZE") {
-      return res.status(500).send({
-        message: "El tamaño del archivo no puede ser mayor a 2MB!",
-      });
-    }
-
-    res.status(500).send({
-      message: `No se pudo subir el archivo: ${req.file.originalname}. ${err}`,
-      error: `${err}`
-    });
-  }
-};
-*/
 
 export const uploadPhoto = async (req, res) => {
   try {
@@ -261,6 +210,61 @@ export const deletePhoto = async (req, res) => {
     res.status(500).send({
       message: `No se pudo eliminar la foto. ${err}`,
       error: `${err}`
+    });
+  }
+};
+
+export const addPreference = async (req, res) => {
+  try {
+    const { team_name } = req.body;
+    const userId = req.user.id;
+
+    if (!team_name) {
+      return res.status(400).json({
+        code: -1,
+        message: 'Team name is required'
+      });
+    }
+
+    const preference = await Preference.create({ user_id: userId, team_name });
+    res.status(201).json({
+      code: 1,
+      message: 'Preference added successfully',
+      data: preference
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      code: -100,
+      message: 'An error occurred while adding preference'
+    });
+  }
+};
+
+export const removePreference = async (req, res) => {
+  try {
+    const { team_name } = req.body;
+    const userId = req.user.id;
+
+    const preference = await Preference.findOne({ where: { user_id: userId, team_name } });
+
+    if (!preference) {
+      return res.status(404).json({
+        code: -1,
+        message: 'Preference not found'
+      });
+    }
+
+    await preference.destroy();
+    res.status(200).json({
+      code: 1,
+      message: 'Preference removed successfully'
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      code: -100,
+      message: 'An error occurred while removing preference'
     });
   }
 };
