@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const rutaArchivo = path.join(__dirname, '../uploads');
+const rutaArchivo = path.join(__dirname, '../uploads-event');
 
 export const getEvents = async (req, res) => {
   try {
@@ -233,6 +233,75 @@ export const getParticipants = async (req, res) => {
     res.status(500).json({
       code: -100,
       message: 'Ha ocurrido un error al obtener los participantes'
+    });
+  }
+};
+
+export const uploadEventPhoto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const event = await Event.findByPk(id);
+    if (!event) {
+      return res.status(404).json({
+        code: -6,
+        message: 'Evento non encontrado'
+      });
+    }
+
+    if (req.file) {
+      if (event.photo) {
+        const oldPath = path.join(rutaArchivo, event.photo);
+        fs.unlink(oldPath, (err) => {
+          if (err) console.error(err);
+        });
+      }
+      event.photo = req.file.filename;
+      await event.save();
+    }
+
+    res.status(200).json({
+      code: 1,
+      message: 'Foto del evento subida correctamente',
+      data: { photo: event.photo }
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      code: -100,
+      message: 'Ha ocurrido un error al subir la foto del evento'
+    });
+  }
+};
+
+export const deleteEventPhoto = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const event = await Event.findByPk(id);
+    if (!event) {
+      return res.status(404).json({
+        code: -6,
+        message: 'Evento no encontrado'
+      });
+    }
+
+    if (event.photo) {
+      const oldPath = path.join(rutaArchivo, event.photo);
+      fs.unlink(oldPath, (err) => {
+        if (err) console.error(err);
+      });
+      event.photo = null;
+      await event.save();
+    }
+
+    res.status(200).json({
+      code: 1,
+      message: 'Foto del evento eliminada correctamente'
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      code: -100,
+      message: 'Ha ocurrido un error al eliminar la foto del evento'
     });
   }
 };
