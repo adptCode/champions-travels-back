@@ -27,6 +27,14 @@ const Event = sequelize.define('Event', {
     type: DataTypes.STRING(255),
     allowNull: true,
   },
+  start_time: {
+    type: DataTypes.TIME,
+    allowNull: false,
+  },
+  end_time: {
+    type: DataTypes.TIME,
+    allowNull: false,
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,

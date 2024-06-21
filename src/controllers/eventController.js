@@ -59,9 +59,9 @@ export const addEvent = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { title, description, event_date, location } = req.body;
+    const { title, description, event_date, location, start_time, end_time  } = req.body;
     /**/ const eventPhoto = req.file ? req.file.filename : null;
-    const newEvent = await Event.create({ title, description, event_date, location, /**/ photo: eventPhoto });
+    const newEvent = await Event.create({ title, description, event_date, location, start_time, end_time, photo: eventPhoto });
 
     res.status(200).json({
       code: 1,
@@ -80,7 +80,7 @@ export const addEvent = async (req, res) => {
 export const updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, event_date, location } = req.body;
+    const { title, description, event_date, location, start_time, end_time  } = req.body;
     const event = await Event.findByPk(id);
     if (!event) {
       return res.status(404).json({
@@ -89,7 +89,7 @@ export const updateEvent = async (req, res) => {
       });
     }
 
-    /* */ 
+    
     if (req.file) {
       if (event.photo) {
         const oldPath = path.join(rutaArchivo, event.photo);
@@ -100,12 +100,14 @@ export const updateEvent = async (req, res) => {
       event.photo = req.file.filename;
     }
 
-    /* */
+   
 
     event.title = title;
     event.description = description;
     event.event_date = event_date;
     event.location = location;
+    event.start_time = start_time;
+    event.end_time = end_time;
     await event.save();
 
     res.status(200).json({
