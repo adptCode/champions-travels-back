@@ -172,6 +172,20 @@ export const participateEvent = async (req, res) => {
       });
     }
 
+    const existingParticipation = await EventParticipation.findOne({
+      where: {
+        user_id: user.id,
+        event_id: id
+      }
+    });
+
+    if (existingParticipation) {
+      return res.status(400).json({
+        code: -7,
+        message: 'Ya estás registrado en este evento'
+      });
+    }
+
     const participation = await EventParticipation.create({
       user_id: user.id,
       event_id: id,
@@ -304,6 +318,49 @@ export const deleteEventPhoto = async (req, res) => {
     res.status(500).json({
       code: -100,
       message: 'Ha ocurrido un error al eliminar la foto del evento'
+    });
+  }
+};
+
+export const leaveEvent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = req.user;
+
+    const event = await Event.findByPk(id);
+    if (!event) {
+      return res.status(404).json({
+        code: -6,
+        message: 'Evento no encontrado'
+      });
+    }
+
+    // Verifica se l'utente è iscritto
+    const existingParticipation = await EventParticipation.findOne({
+      where: {
+        user_id: user.id,
+        event_id: id
+      }
+    });
+
+    if (!existingParticipation) {
+      return res.status(400).json({
+        code: -7,
+        message: 'No estás registrado en este evento'
+      });
+    }
+
+    await existingParticipation.destroy();
+
+    res.status(200).json({
+      code: 1,
+      message: 'Participación eliminada correctamente'
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      code: -100,
+      message: 'Ha ocurrido un error al eliminar la participación'
     });
   }
 };
