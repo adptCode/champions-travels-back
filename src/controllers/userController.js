@@ -1,5 +1,7 @@
 import User from '../models/userModel.js';
 import Preference from '../models/preferenceModel.js';
+import EventParticipation from '../models/participationModel.js';
+import Event from '../models/eventModel.js';
 import { validationResult } from 'express-validator';
 import fs from 'fs';
 import path from 'path';
@@ -44,6 +46,80 @@ export const getUser = async (req, res) => {
     res.status(500).json({
       code: -100,
       message: 'Ha ocurrido un error al obtener el usuario'
+    });
+  }
+};
+
+export const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findByPk(id, {
+      include: [{ model: Preference, as: 'Preferences' }]
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        code: -10,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    const userData = {
+      id: user.id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      birth_date: user.birth_date,
+      city: user.city,
+      country: user.country,
+      email: user.email,
+      profile_picture: user.profile_picture ? `${req.protocol}://${req.get('host')}/uploads/${user.profile_picture}` : null,
+      preferences: user.Preferences.map(pref => pref.team_name),
+      role: user.role,
+      created_at: user.created_at,
+      updated_at: user.updated_at
+    };
+
+    res.status(200).json({
+      code: 1,
+      message: 'Detalle del Usuario',
+      data: userData
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      code: -100,
+      message: 'Ha ocurrido un error al obtener el usuario'
+    });
+  }
+};
+
+export const getUserEvents = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const participations = await EventParticipation.findAll({
+      where: { user_id: id },
+      include: [{ model: Event }]
+    });
+
+    if (!participations) {
+      return res.status(404).json({
+        code: -10,
+        message: 'Eventos no encontrados para el usuario'
+      });
+    }
+
+    const events = participations.map(participation => participation.Event);
+
+    res.status(200).json({
+      code: 1,
+      message: 'Lista de eventos del usuario',
+      data: events
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      code: -100,
+      message: 'Ha ocurrido un error al obtener los eventos del usuario'
     });
   }
 };
@@ -265,6 +341,35 @@ export const removePreference = async (req, res) => {
     res.status(500).json({
       code: -100,
       message: 'An error occurred while removing preference'
+    });
+  }
+};
+
+export const removeUserFromEvent = async (req, res) => {
+  try {
+    const { userId, eventId } = req.params;
+
+    const participation = await EventParticipation.findOne({ where: { user_id: userId, event_id: eventId } });
+
+    if (!participation) {
+      return res.status(404).json({
+        code: -1,
+        message: 'Participation not found'
+      });
+    }
+
+    await participation.destroy();
+
+    res.status(200).json({
+      code: 1,
+      message: 'User removed from event successfully'
+    });
+  } catch (error) {
+    console.error('Error removing user from event:', error);
+    res.status(500).json({
+      code: -100,
+      message: 'An error occurred while removing the user from the event',
+      error: error.message
     });
   }
 };
