@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { getEvents, getEventById, addEvent, updateEvent, deleteEvent, participateEvent, getParticipants, uploadEventPhoto, deleteEventPhoto, leaveEvent } from '../controllers/eventController.js';
 import { authenticateToken } from '../middlewares/authenticateToken.js';
 import { eventValidator } from '../validations/event.Validation.js';
-import { idValidator } from '../validations/generic.Validation.js';
+import { idValidator } from '../validations/generic.validation.js';
 import { uploadEventFileMiddleware } from '../middlewares/upload-event.js';
 
 const router = Router();
