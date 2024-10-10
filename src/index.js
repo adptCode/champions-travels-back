@@ -57,8 +57,10 @@ app.use(express.urlencoded({ extended: true })); // Para analizar datos de formu
 // const __dirname=path.dirname(__filename)
 
 // Servir archivos estáticos desde la carpeta "uploads"
-app.use("/uploads", express.static(path.join(__dirname,"uploads")));
-app.use("/uploads-event", express.static(path.join(__dirname,"uploads-event")));
+app.use("/uploads", express.static(uploadDir));
+app.use("/uploads-event", express.static(eventUploadDir));
+// app.use("/uploads", express.static(path.join(__dirname,"uploads")));
+// app.use("/uploads-event", express.static(path.join(__dirname,"uploads-event")));
 
 await testConnection();
 await insertInitialData();
