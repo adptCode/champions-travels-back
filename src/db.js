@@ -12,13 +12,13 @@ const sequelize = new Sequelize(
   {
     host: process.env.HOST_NAME,  // Host del database
     port: process.env.DB_PORT || 3306,    // Porta MySQL
-    dialect: 'postgres',
+    dialect: isProduction ? 'postgres' : 'mysql',  // Tipo di database
     dialectOptions: isProduction ? {  // Attiva SSL solo in produzione
-      connectTimeout: 60000,  // Imposta il timeout a 30 second
-      // ssl: {
-      //   require: true,
-      //   rejectUnauthorized: false
-      // }
+      connectTimeout: 30000,  // Imposta il timeout a 30 second
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
     } : {},  // Nessun SSL in locale
     logging: console.log  // Abilita il logging per debug
   }
