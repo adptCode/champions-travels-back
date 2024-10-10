@@ -4,7 +4,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const isProduction = process.env.NODE_ENV === 'production';
-
+console.log(process.env.USER_NAME)
+console.log(process.env.DATABASE)
+console.log(process.env.PASSWORD)
+console.log(process.env.HOST_NAME)
+console.log(process.env.DB_PORT)
 const sequelize = new Sequelize(
   process.env.DATABASE,    // Nome del database
   process.env.USER_NAME,   // Nome utente
