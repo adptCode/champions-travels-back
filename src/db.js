@@ -14,7 +14,7 @@ const sequelize = new Sequelize(
     port: process.env.DB_PORT || 3306,    // Porta MySQL
     dialect: 'mysql',
     dialectOptions: isProduction ? {  // Attiva SSL solo in produzione
-      connectTimeout: 30000,  // Imposta il timeout a 30 second
+      connectTimeout: 60000,  // Imposta il timeout a 30 second
       // ssl: {
       //   require: true,
       //   rejectUnauthorized: false
