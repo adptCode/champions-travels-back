@@ -43,14 +43,14 @@ export const register = async (req, res) => {
     await newUser.save();
 
     const accessToken = jwt.sign({ id: newUser.id, role: newUser.role }, process.env.JWT_SECRET);
-    const token = serialize('token', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 24 * 30,
-      path: '/',
-    });
-    res.setHeader('Set-Cookie', token);
+    // const token = serialize('token', accessToken, {
+    //   httpOnly: true,
+    //   secure: process.env.NODE_ENV === 'production',
+    //   sameSite: 'strict',
+    //   maxAge: 60 * 60 * 24 * 30,
+    //   path: '/',
+    // });
+    // res.setHeader('Set-Cookie', token);
 
     res.status(200).json({
       code: 1,
@@ -95,14 +95,14 @@ export const login = async (req, res) => {
     }
 
     const accessToken = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET);
-    const token = serialize('token', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 60 * 60 * 24 * 30,
-      path: '/',
-    });
-    res.setHeader('Set-Cookie', token);
+    // const token = serialize('token', accessToken, {
+    //   httpOnly: true,
+    //   secure: process.env.NODE_ENV === 'production',
+    //   sameSite: 'strict',
+    //   maxAge: 60 * 60 * 24 * 30,
+    //   path: '/',
+    // });
+    // res.setHeader('Set-Cookie', token);
 
     res.status(200).json({
       code: 1,
@@ -128,14 +128,14 @@ export const login = async (req, res) => {
 };
 
 export const logout = async (req, res) => {
-  const token = serialize('token', '', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: -1,
-    path: '/',
-  });
-  res.setHeader('Set-Cookie', token);
+  // const token = serialize('token', '', {
+  //   httpOnly: true,
+  //   secure: process.env.NODE_ENV === 'production',
+  //   sameSite: 'strict',
+  //   maxAge: -1,
+  //   path: '/',
+  // });
+  // res.setHeader('Set-Cookie', token);
   res.status(200).json({
     code: 0,
     message: 'Logged out - Delete Token',
@@ -285,11 +285,15 @@ export const changePassword = async (req, res) => {
 
 export const getCurrentUser = async (req, res) => {
   try {
-    const token = req.cookies.token;
+    // Prendi il token dall'header Authorization
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // "Bearer <token>"
+
     if (!token) {
       return res.status(401).json({ message: 'No token provided' });
     }
 
+    // Verifica il token utilizzando la chiave segreta
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findByPk(decoded.id);
 
@@ -303,3 +307,25 @@ export const getCurrentUser = async (req, res) => {
     res.status(500).json({ message: 'Failed to authenticate user' });
   }
 };
+
+
+// export const getCurrentUser = async (req, res) => {
+//   try {
+//     const token = req.cookies.token;
+//     if (!token) {
+//       return res.status(401).json({ message: 'No token provided' });
+//     }
+
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//     const user = await User.findByPk(decoded.id);
+
+//     if (!user) {
+//       return res.status(404).json({ message: 'User not found' });
+//     }
+
+//     res.status(200).json(user);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: 'Failed to authenticate user' });
+//   }
+
