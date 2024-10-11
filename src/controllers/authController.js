@@ -21,7 +21,7 @@ export const register = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
     
-    const { email, password, first_name, last_name, birth_date } = req.body;  
+    const { email, password, first_name, last_name, birth_date, role } = req.body;  
       
     const existingUser = await User.findOne({ where: { email }});
     if (existingUser) {
@@ -33,7 +33,13 @@ export const register = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, Number(process.env.BCRYPT_SALT));
-    const newUser = new User({ email, password: hashedPassword, first_name, last_name, birth_date, status: 1 });
+
+      
+    // Aggiungi il campo "role" solo se passato e valido
+    const userRole = role && role === 'admin' ? 'admin' : 'user';
+
+    const newUser = new User({ email, password: hashedPassword, first_name, last_name, birth_date, role: userRole, status: 1 });
+    
     await newUser.save();
 
     const accessToken = jwt.sign({ id: newUser.id, role: newUser.role }, process.env.JWT_SECRET);
