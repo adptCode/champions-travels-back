@@ -9,6 +9,7 @@ console.log(process.env.DATABASE)
 console.log(process.env.PASSWORD)
 console.log(process.env.HOST_NAME)
 console.log(process.env.DB_PORT)
+
 const sequelize = new Sequelize(
   process.env.DATABASE,    // Nome del database
   process.env.USER_NAME,   // Nome utente
