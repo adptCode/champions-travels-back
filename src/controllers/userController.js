@@ -6,7 +6,7 @@ import { validationResult } from 'express-validator';
 import fs from 'fs';
 import path from 'path';
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "../firebaseConfig.js";
+import { storage } from "../../firebaseConfig.js";
 import dotenv from "dotenv";
 import sharp from "sharp";
 
