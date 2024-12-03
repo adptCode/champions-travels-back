@@ -5,6 +5,13 @@ import Event from '../models/eventModel.js';
 import { validationResult } from 'express-validator';
 import fs from 'fs';
 import path from 'path';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from "../firebaseConfig";
+import dotenv from "dotenv";
+import sharp from "sharp";
+
+dotenv.config();
+const isProduction = process.env.NODE_ENV === "production";
 
 
 export const getUser = async (req, res) => {
@@ -188,42 +195,115 @@ export const updateUser = async (req, res) => {
 };
 
 
+// export const uploadPhoto = async (req, res) => {
+//   try {
+//     const rutaArchivo = "./src/uploads/";
+
+//     if (!req.file) {
+//       return res.status(400).json({
+//         code: -101,
+//         message: 'Por favor suba un archivo!'
+//       });
+//     }
+
+//     const user = await User.findByPk(req.user.id);
+
+//     if (user.profile_picture) {
+//       const oldFilePath = path.join(rutaArchivo, user.profile_picture);
+
+//       fs.access(oldFilePath, fs.constants.F_OK, (err) => {
+//         if (!err) {
+//           fs.unlink(oldFilePath, (err) => {
+//             if (err) {
+//               console.error('Error al eliminar el archivo viejo', err);
+//             }
+//           });
+//         }
+//       });
+//     }
+
+//     user.profile_picture = req.file.filename;
+//     await user.save();
+
+//     res.status(200).json({
+//       code: 1,
+//       message: "Archivo subido correctamente: " + req.file.originalname,
+//       data: {
+//         profile_picture: user.profile_picture
+//       }
+//     });
+//   } catch (err) {
+//     if (err.code == "LIMIT_FILE_SIZE") {
+//       return res.status(500).send({
+//         message: "El tamaño del archivo no puede ser mayor a 2MB!",
+//       });
+//     }
+
+//     res.status(500).send({
+//       message: `No se pudo subir el archivo: ${req.file.originalname}. ${err}`,
+//       error: `${err}`
+//     });
+//   }
+// };
 export const uploadPhoto = async (req, res) => {
   try {
-    const rutaArchivo = "./src/uploads/";
-
     if (!req.file) {
       return res.status(400).json({
         code: -101,
-        message: 'Por favor suba un archivo!'
+        message: "Por favor suba un archivo!",
       });
     }
 
     const user = await User.findByPk(req.user.id);
 
-    if (user.profile_picture) {
+    if (isProduction) {
+      // Produzione: Caricamento su Firebase Storage
+      const compressedBuffer = await sharp(req.file.buffer)
+        .resize({ width: 800 })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+
+      const fileName = `profile_pictures/${user.id}-${Date.now()}.jpeg`;
+      const storageRef = ref(storage, fileName);
+
+      const snapshot = await uploadBytes(storageRef, compressedBuffer);
+      const fileUrl = await getDownloadURL(snapshot.ref);
+
+      // Elimina la vecchia foto su Firebase (opzionale)
+      if (user.profile_picture) {
+        const oldStorageRef = ref(storage, user.profile_picture);
+        await oldStorageRef.delete().catch(() => {
+          console.error("Impossibile eliminare la vecchia foto su Firebase.");
+        });
+      }
+
+      user.profile_picture = fileUrl;
+    } else {
+      // Sviluppo: Salvataggio locale
+      const rutaArchivo = "./src/uploads/";
       const oldFilePath = path.join(rutaArchivo, user.profile_picture);
 
-      fs.access(oldFilePath, fs.constants.F_OK, (err) => {
-        if (!err) {
-          fs.unlink(oldFilePath, (err) => {
-            if (err) {
-              console.error('Error al eliminar el archivo viejo', err);
-            }
-          });
-        }
-      });
+      if (user.profile_picture) {
+        fs.access(oldFilePath, fs.constants.F_OK, (err) => {
+          if (!err) {
+            fs.unlink(oldFilePath, (err) => {
+              if (err) console.error("Error al eliminar el archivo viejo", err);
+            });
+          }
+        });
+      }
+
+      user.profile_picture = req.file.filename;
     }
 
-    user.profile_picture = req.file.filename;
     await user.save();
 
     res.status(200).json({
       code: 1,
-      message: "Archivo subido correctamente: " + req.file.originalname,
+      message: `Archivo subido correctamente: ${req.file.originalname}`,
       data: {
-        profile_picture: user.profile_picture
-      }
+        profile_picture: user.profile_picture,
+      },
     });
   } catch (err) {
     if (err.code == "LIMIT_FILE_SIZE") {
@@ -234,14 +314,64 @@ export const uploadPhoto = async (req, res) => {
 
     res.status(500).send({
       message: `No se pudo subir el archivo: ${req.file.originalname}. ${err}`,
-      error: `${err}`
+      error: `${err}`,
     });
   }
 };
 
+// export const deletePhoto = async (req, res) => {
+//   try {
+//     const rutaArchivo = "./src/uploads/";
+//     const user = await User.findByPk(req.user.id);
+
+//     if (!user || !user.profile_picture) {
+//       return res.status(400).json({
+//         code: -104,
+//         message: "No hay foto para eliminar",
+//       });
+//     }
+
+//     const filePath = path.join(rutaArchivo, user.profile_picture);
+
+//     fs.access(filePath, fs.constants.F_OK, (err) => {
+//       if (err) {
+//         console.error('Error al acceder al archivo', err);
+//         return res.status(500).json({
+//           code: -103,
+//           message: 'Error al acceder al archivo',
+//           error: err
+//         });
+//       }
+
+//       fs.unlink(filePath, async (err) => {
+//         if (err) {
+//           console.error('Error al eliminar el archivo', err);
+//           return res.status(500).json({
+//             code: -103,
+//             message: 'Error al eliminar el archivo',
+//             error: err
+//           });
+//         }
+
+//         user.profile_picture = null;
+//         await user.save();
+
+//         res.status(200).json({
+//           code: 1,
+//           message: "Foto eliminada correctamente",
+//         });
+//       });
+//     });
+//   } catch (err) {
+//     res.status(500).send({
+//       message: `No se pudo eliminar la foto. ${err}`,
+//       error: `${err}`
+//     });
+//   }
+// };
+
 export const deletePhoto = async (req, res) => {
   try {
-    const rutaArchivo = "./src/uploads/";
     const user = await User.findByPk(req.user.id);
 
     if (!user || !user.profile_picture) {
@@ -251,44 +381,73 @@ export const deletePhoto = async (req, res) => {
       });
     }
 
-    const filePath = path.join(rutaArchivo, user.profile_picture);
+    if (isProduction) {
+      // Produzione: Eliminazione da Firebase Storage
+      const storageRef = ref(storage, user.profile_picture);
 
-    fs.access(filePath, fs.constants.F_OK, (err) => {
-      if (err) {
-        console.error('Error al acceder al archivo', err);
+      try {
+        await storageRef.delete();
+        console.log("Foto eliminata da Firebase Storage.");
+      } catch (err) {
+        console.error("Errore al eliminare la foto da Firebase:", err);
         return res.status(500).json({
           code: -103,
-          message: 'Error al acceder al archivo',
-          error: err
+          message: "Error al eliminar la foto en Firebase",
+          error: err,
         });
       }
 
-      fs.unlink(filePath, async (err) => {
+      user.profile_picture = null;
+    } else {
+      // Sviluppo: Eliminazione locale
+      const rutaArchivo = "./src/uploads/";
+      const filePath = path.join(rutaArchivo, user.profile_picture);
+
+      fs.access(filePath, fs.constants.F_OK, (err) => {
         if (err) {
-          console.error('Error al eliminar el archivo', err);
+          console.error("Error al acceder al archivo", err);
           return res.status(500).json({
             code: -103,
-            message: 'Error al eliminar el archivo',
-            error: err
+            message: "Error al acceder al archivo",
+            error: err,
           });
         }
 
-        user.profile_picture = null;
-        await user.save();
+        fs.unlink(filePath, async (err) => {
+          if (err) {
+            console.error("Error al eliminar el archivo", err);
+            return res.status(500).json({
+              code: -103,
+              message: "Error al eliminar el archivo",
+              error: err,
+            });
+          }
 
-        res.status(200).json({
-          code: 1,
-          message: "Foto eliminada correctamente",
+          user.profile_picture = null;
+          await user.save();
+
+          res.status(200).json({
+            code: 1,
+            message: "Foto eliminada correctamente",
+          });
         });
       });
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      code: 1,
+      message: "Foto eliminada correctamente",
     });
   } catch (err) {
     res.status(500).send({
       message: `No se pudo eliminar la foto. ${err}`,
-      error: `${err}`
+      error: `${err}`,
     });
   }
 };
+
 
 export const addPreference = async (req, res) => {
   try {
