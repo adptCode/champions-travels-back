@@ -4,7 +4,7 @@ import multer from "multer";
 import path from 'path';
 import sharp from "sharp";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "../../firebaseConfig"
+import { storage } from "../firebaseConfig"
 import dotenv from "dotenv";
 
 dotenv.config();
