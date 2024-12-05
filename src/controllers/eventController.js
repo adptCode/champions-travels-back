@@ -60,30 +60,35 @@ export const getEventById = async (req, res) => {
     const { id } = req.params;
     const event = await Event.findByPk(id);
     if (!event) {
-      return res.status(404).json({
-        code: -6,
-        message: 'Evento no encontrado'
-      });
+      return res.status(404).json({ code: -6, message: 'Evento non trovato' });
     }
 
-    // Ottieni la URL completa della foto
     let photoUrl = null;
     if (event.photo) {
       const storageRef = ref(storage, event.photo);
-      photoUrl = await getDownloadURL(storageRef);
+      try {
+        photoUrl = await getDownloadURL(storageRef);
+      } catch (error) {
+        if (error.code === 'storage/object-not-found') {
+          console.warn(`File not found: ${event.photo}`);
+          photoUrl = null;
+        } else {
+          throw error;
+        }
+      }
     }
-
 
     res.status(200).json({
       code: 1,
-      message: 'Detalle del Evento',
+      message: 'Dettagli dell\'Evento',
       data: { ...event.toJSON(), photo: photoUrl }
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       code: -100,
-      message: 'Ha ocurrido un error al obtener el evento'
+      message: 'Errore durante il recupero dell\'evento',
+      error: error.message
     });
   }
 };
@@ -263,28 +268,45 @@ export const getParticipants = async (req, res) => {
     if (!event) {
       return res.status(404).json({
         code: -6,
-        message: 'Evento no encontrado'
+        message: 'Evento non trovato'
       });
     }
 
-    const participants = event.EventParticipations.map(participation => ({
-      id: participation.User.id,
-      first_name: participation.User.first_name,
-      last_name: participation.User.last_name,
-      email: participation.User.email,
-      profile_picture: participation.User.profile_picture
+    const participants = await Promise.all(event.EventParticipations.map(async participation => {
+      let profilePictureUrl = null;
+      if (participation.User.profile_picture) {
+        const storageRef = ref(storage, participation.User.profile_picture);
+        try {
+          profilePictureUrl = await getDownloadURL(storageRef);
+        } catch (error) {
+          if (error.code === 'storage/object-not-found') {
+            console.warn(`File not found: ${participation.User.profile_picture}`);
+            profilePictureUrl = null;
+          } else {
+            throw error;
+          }
+        }
+      }
+      return {
+        id: participation.User.id,
+        first_name: participation.User.first_name,
+        last_name: participation.User.last_name,
+        email: participation.User.email,
+        profile_picture: profilePictureUrl
+      };
     }));
 
     res.status(200).json({
       code: 1,
-      message: 'Lista de participantes',
+      message: 'Lista dei partecipanti',
       data: participants
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       code: -100,
-      message: 'Ha ocurrido un error al obtener los participantes'
+      message: 'Errore durante il recupero dei partecipanti',
+      error: error.message
     });
   }
 };
