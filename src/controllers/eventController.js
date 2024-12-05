@@ -5,29 +5,55 @@ import { validationResult } from 'express-validator';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { uploadMiddleware, processAndUploadFile, deleteFile } from "../middlewares/uploadMiddleware.js";
+import { ref, getDownloadURL } from "firebase/storage";
+import { storage } from "../firebaseConfig.js";
+import { processAndUploadFile, deleteFile } from "../middlewares/uploadMiddleware.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const rutaArchivo = path.join(__dirname, '../uploads-event');
-
 export const getEvents = async (req, res) => {
   try {
     const events = await Event.findAll();
+
+    const eventsWithPhotoUrls = await Promise.all(
+      events.map(async (event) => {
+        let photoUrl = null;
+        if (event.photo) {
+          const storageRef = ref(storage, event.photo);
+          try {
+            photoUrl = await getDownloadURL(storageRef);
+          } catch (error) {
+            if (error.code === 'storage/object-not-found') {
+              console.warn(`File not found: ${event.photo}`);
+              // Imposta photoUrl a null o a un'immagine di default
+              photoUrl = null; // O assegnare una URL di default
+            } else {
+              throw error; // Rilancia l'errore se è di altro tipo
+            }
+          }
+        }
+        return {
+          ...event.toJSON(),
+          photo: photoUrl,
+        };
+      })
+    );
+
     res.status(200).json({
       code: 1,
-      message: 'Lista de Eventos',
-      data: events
+      message: 'Lista degli Eventi',
+      data: eventsWithPhotoUrls,
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({
       code: -100,
-      message: 'Ha ocurrido un error al obtener los eventos',
+      message: 'Errore durante il recupero degli eventi',
     });
   }
 };
+
 
 export const getEventById = async (req, res) => {
   try {
@@ -39,10 +65,19 @@ export const getEventById = async (req, res) => {
         message: 'Evento no encontrado'
       });
     }
+
+    // Ottieni la URL completa della foto
+    let photoUrl = null;
+    if (event.photo) {
+      const storageRef = ref(storage, event.photo);
+      photoUrl = await getDownloadURL(storageRef);
+    }
+
+
     res.status(200).json({
       code: 1,
       message: 'Detalle del Evento',
-      data: event
+      data: { ...event.toJSON(), photo: photoUrl }
     });
   } catch (error) {
     console.error(error);
@@ -254,65 +289,40 @@ export const getParticipants = async (req, res) => {
   }
 };
 
-// export const uploadEventPhoto = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const event = await Event.findByPk(id);
-//     if (!event) {
-//       return res.status(404).json({
-//         code: -6,
-//         message: 'Evento non encontrado'
-//       });
-//     }
-
-//     if (req.file) {
-//       if (event.photo) {
-//         const oldPath = path.join(rutaArchivo, event.photo);
-//         fs.unlink(oldPath, (err) => {
-//           if (err) console.error(err);
-//         });
-//       }
-//       event.photo = req.file.filename;
-//       await event.save();
-//     }
-
-//     res.status(200).json({
-//       code: 1,
-//       message: 'Foto del evento subida correctamente',
-//       data: { photo: event.photo }
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({
-//       code: -100,
-//       message: 'Ha ocurrido un error al subir la foto del evento'
-//     });
-//   }
-// };
-
 export const uploadEventPhoto = async (req, res) => {
   try {
-    await uploadMiddleware(req, res);
-
     const { id } = req.params;
     const event = await Event.findByPk(id);
     if (!event) {
-      return res.status(404).json({ code: -1, message: "Evento no encontrado" });
+      return res.status(404).json({ code: -1, message: "Evento non trovato" });
     }
 
-    // Elimina l'immagine precedente su Firebase
+    if (!req.file) {
+      return res.status(400).json({ code: -1, message: "Nessun file ricevuto" });
+    }
+
+    // Elimina la foto precedente
     if (event.photo) {
       await deleteFile(event.photo);
     }
 
-    // Carica la nuova immagine
-    const fileUrl = await processAndUploadFile(req.file, "event_photos");
-    event.photo = fileUrl;
+    // Carica la nuova foto
+    const { url, path } = await processAndUploadFile(req.file, "event_photos");
+    event.photo = path; // Salva il percorso nel database
     await event.save();
 
-    res.status(200).json({ code: 1, message: "Foto del evento subida correctamente", data: { photo: fileUrl } });
+    res.status(200).json({
+      code: 1,
+      message: "Foto dell'evento caricata correttamente",
+      data: { photo: url },
+    });
   } catch (error) {
-    res.status(500).json({ code: -100, message: "Error al subir la foto del evento", error: error.message });
+    console.error("Errore durante il caricamento della foto dell'evento:", error);
+    res.status(500).json({
+      code: -100,
+      message: "Errore durante il caricamento della foto dell'evento",
+      error: error.message,
+    });
   }
 };
 
@@ -321,30 +331,25 @@ export const deleteEventPhoto = async (req, res) => {
     const { id } = req.params;
     const event = await Event.findByPk(id);
     if (!event) {
-      return res.status(404).json({
-        code: -6,
-        message: 'Evento no encontrado'
-      });
+      return res.status(404).json({ code: -1, message: "Evento non trovato" });
     }
 
     if (event.photo) {
-      const oldPath = path.join(rutaArchivo, event.photo);
-      fs.unlink(oldPath, (err) => {
-        if (err) console.error(err);
-      });
-      event.photo = null;
+      await deleteFile(event.photo); // Elimina la foto da Firebase
+      event.photo = null; // Rimuovi il riferimento dal database
       await event.save();
     }
 
     res.status(200).json({
       code: 1,
-      message: 'Foto del evento eliminada correctamente'
+      message: "Foto dell'evento eliminata correttamente",
     });
   } catch (error) {
-    console.error(error);
+    console.error("Errore durante l'eliminazione della foto:", error);
     res.status(500).json({
       code: -100,
-      message: 'Ha ocurrido un error al eliminar la foto del evento'
+      message: "Errore durante l'eliminazione della foto dell'evento",
+      error: error.message,
     });
   }
 };
