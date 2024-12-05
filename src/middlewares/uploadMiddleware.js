@@ -44,7 +44,7 @@ export const processAndUploadFile = async (file, folder = "uploads") => {
     const url = await getDownloadURL(snapshot.ref);
     console.log("URL del file:", url);
 
-    return url;
+    return { url, path: fileName };
   } catch (error) {
     console.error("Errore durante il caricamento del file:", error);
     throw error;

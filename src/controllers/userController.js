@@ -5,7 +5,7 @@ import Event from '../models/eventModel.js';
 import { validationResult } from 'express-validator';
 import fs from 'fs';
 import path from 'path';
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, deleteObject, getDownloadURL } from "firebase/storage";
 import { storage } from "../firebaseConfig.js";
 import { processAndUploadFile, deleteFile } from "../middlewares/uploadMiddleware.js";
 
@@ -22,6 +22,12 @@ export const getUser = async (req, res) => {
       });
     }
 
+    let profile_picture_url = null;
+    if (user.profile_picture) {
+      const storageRef = ref(storage, user.profile_picture);
+      profile_picture_url = await getDownloadURL(storageRef);
+    }
+
     const userData = {
       id: user.id,
       first_name: user.first_name,
@@ -30,7 +36,7 @@ export const getUser = async (req, res) => {
       city: user.city,
       country: user.country,
       email: user.email,
-      profile_picture: user.profile_picture || null,
+      profile_picture: profile_picture_url,
       preferences: user.Preferences.map(pref => pref.team_name),
       role: user.role,
       created_at: user.created_at,
@@ -66,6 +72,12 @@ export const getUserById = async (req, res) => {
       });
     }
 
+    let profile_picture_url = null;
+    if (user.profile_picture) {
+      const storageRef = ref(storage, user.profile_picture);
+      profile_picture_url = await getDownloadURL(storageRef);
+    }
+
     const userData = {
       id: user.id,
       first_name: user.first_name,
@@ -74,7 +86,7 @@ export const getUserById = async (req, res) => {
       city: user.city,
       country: user.country,
       email: user.email,
-      profile_picture: user.profile_picture || null,
+      profile_picture: profile_picture_url,
       preferences: user.Preferences.map(pref => pref.team_name),
       role: user.role,
       created_at: user.created_at,
@@ -213,10 +225,10 @@ export const uploadPhoto = async (req, res) => {
     }
 
     const fileUrl = await processAndUploadFile(req.file, "profile_pictures");
-    user.profile_picture = fileUrl;
+    user.profile_picture = fileUrl.path; // Almacena la ruta del archivo
     await user.save();
 
-    res.status(200).json({ code: 1, message: "Foto cargada correctamente", data: { profile_picture: fileUrl } });
+    res.status(200).json({ code: 1, message: "Foto cargada correctamente", data: { profile_picture: fileUrl.url } }); // Retorna la URL de descarga
   } catch (error) {
     console.error("Error al cargar la foto:", error);
     res.status(500).json({ code: -100, message: "Error al cargar la foto", error: error.message });
@@ -234,59 +246,21 @@ export const deletePhoto = async (req, res) => {
       });
     }
 
-    if (isProduction) {
-      // Produzione: Eliminazione da Firebase Storage
-      const storageRef = ref(storage, user.profile_picture);
+    const storageRef = ref(storage, user.profile_picture);
 
-      try {
-        await storageRef.delete();
-        console.log("Foto eliminata da Firebase Storage.");
-      } catch (err) {
-        console.error("Errore al eliminare la foto da Firebase:", err);
-        return res.status(500).json({
-          code: -103,
-          message: "Error al eliminar la foto en Firebase",
-          error: err,
-        });
-      }
-
-      user.profile_picture = null;
-    } else {
-      // Sviluppo: Eliminazione locale
-      const rutaArchivo = "./src/uploads/";
-      const filePath = path.join(rutaArchivo, user.profile_picture);
-
-      fs.access(filePath, fs.constants.F_OK, (err) => {
-        if (err) {
-          console.error("Error al acceder al archivo", err);
-          return res.status(500).json({
-            code: -103,
-            message: "Error al acceder al archivo",
-            error: err,
-          });
-        }
-
-        fs.unlink(filePath, async (err) => {
-          if (err) {
-            console.error("Error al eliminar el archivo", err);
-            return res.status(500).json({
-              code: -103,
-              message: "Error al eliminar el archivo",
-              error: err,
-            });
-          }
-
-          user.profile_picture = null;
-          await user.save();
-
-          res.status(200).json({
-            code: 1,
-            message: "Foto eliminada correctamente",
-          });
-        });
+    try {
+      await deleteObject(storageRef);
+      console.log("Foto eliminada de Firebase Storage.");
+    } catch (err) {
+      console.error("Error al eliminar la foto de Firebase:", err);
+      return res.status(500).json({
+        code: -103,
+        message: "Error al eliminar la foto en Firebase",
+        error: err.message,
       });
     }
 
+    user.profile_picture = null;
     await user.save();
 
     res.status(200).json({
@@ -295,11 +269,12 @@ export const deletePhoto = async (req, res) => {
     });
   } catch (err) {
     res.status(500).send({
-      message: `No se pudo eliminar la foto. ${err}`,
-      error: `${err}`,
+      message: `No se pudo eliminar la foto. ${err.message}`,
+      error: err.message,
     });
   }
 };
+
 
 
 export const addPreference = async (req, res) => {
