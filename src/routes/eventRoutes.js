@@ -3,7 +3,8 @@ import { getEvents, getEventById, addEvent, updateEvent, deleteEvent, participat
 import { authenticateToken } from '../middlewares/authenticateToken.js';
 import { eventValidator } from '../validations/event.Validation.js';
 import { idValidator } from '../validations/generic.Validation.js';
-import { uploadMiddleware } from '../middlewares/uploadMiddleware.js';
+// import { uploadMiddleware } from '../middlewares/uploadMiddleware.js';
+import { uploadMiddleware } from '../middlewares/firebaseAdminUpload.js';
 
 const router = Router();
 

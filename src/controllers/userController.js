@@ -3,11 +3,11 @@ import Preference from '../models/preferenceModel.js';
 import EventParticipation from '../models/participationModel.js';
 import Event from '../models/eventModel.js';
 import { validationResult } from 'express-validator';
-import fs from 'fs';
-import path from 'path';
-import { ref, deleteObject, getDownloadURL } from "firebase/storage";
-import { storage } from "../firebaseConfig.js";
-import { processAndUploadFile, deleteFile } from "../middlewares/uploadMiddleware.js";
+// import { ref, deleteObject, getDownloadURL } from "firebase/storage";
+// import { storage } from "../firebaseConfig.js";
+// import { processAndUploadFile, deleteFile } from "../middlewares/uploadMiddleware.js";
+import { processAndUploadFile, deleteFile } from "../middlewares/firebaseAdminUpload.js";
+import { generateSignedUrl } from '../middlewares/firebaseAdminUpload.js';
 
 export const getUser = async (req, res) => {
   try {
@@ -24,8 +24,9 @@ export const getUser = async (req, res) => {
 
     let profile_picture_url = null;
     if (user.profile_picture) {
-      const storageRef = ref(storage, user.profile_picture);
-      profile_picture_url = await getDownloadURL(storageRef);
+      // const storageRef = ref(storage, user.profile_picture);
+      // profile_picture_url = await getDownloadURL(storageRef);
+      profile_picture_url = await generateSignedUrl(user.profile_picture);
     }
 
     const userData = {
@@ -75,7 +76,9 @@ export const getUserById = async (req, res) => {
     let profile_picture_url = null;
     if (user.profile_picture) {
       const storageRef = ref(storage, user.profile_picture);
-      profile_picture_url = await getDownloadURL(storageRef);
+      // profile_picture_url = await getDownloadURL(storageRef);
+      // profile_picture_url = await generateSignedUrl(storageRef);
+      profile_picture_url = await generateSignedUrl(user.profile_picture);
     }
 
     const userData = {
@@ -246,20 +249,26 @@ export const deletePhoto = async (req, res) => {
       });
     }
 
-    const storageRef = ref(storage, user.profile_picture);
+    // ❌ En lugar de "deleteObject(storageRef)", usa la función Admin
+    // ❌ const storageRef = ref(storage, user.profile_picture);
+    // ❌ await deleteObject(storageRef);
 
-    try {
-      await deleteObject(storageRef);
-      console.log("Foto eliminada de Firebase Storage.");
-    } catch (err) {
-      console.error("Error al eliminar la foto de Firebase:", err);
-      return res.status(500).json({
-        code: -103,
-        message: "Error al eliminar la foto en Firebase",
-        error: err.message,
-      });
-    }
+    // const storageRef = ref(storage, user.profile_picture);
 
+    // try {
+    //   await deleteObject(storageRef);
+    //   console.log("Foto eliminada de Firebase Storage.");
+    // } catch (err) {
+    //   console.error("Error al eliminar la foto de Firebase:", err);
+    //   return res.status(500).json({
+    //     code: -103,
+    //     message: "Error al eliminar la foto en Firebase",
+    //     error: err.message,
+    //   });
+    // }
+
+     // ✅ Llama a deleteFile (Admin SDK)
+     await deleteFile(user.profile_picture);
     user.profile_picture = null;
     await user.save();
 

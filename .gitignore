@@ -31,3 +31,5 @@ out/
 public/
 coverage/
 
+# Firebase 
+serviceAccountKey.json

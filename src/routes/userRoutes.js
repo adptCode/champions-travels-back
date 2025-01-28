@@ -2,7 +2,8 @@
 import { Router } from 'express';
 import { getUser, getUserById, updateUser, uploadPhoto, deletePhoto, addPreference, removePreference, getUserEvents, removeUserFromEvent } from '../controllers/userController.js';
 import { authenticateToken } from '../middlewares/authenticateToken.js';
-import { uploadMiddleware } from '../middlewares/uploadMiddleware.js';
+// import { uploadMiddleware } from '../middlewares/uploadMiddleware.js';
+import { uploadMiddleware } from '../middlewares/firebaseAdminUpload.js';
 
 const router = Router();
 

@@ -5,9 +5,11 @@ import { validationResult } from 'express-validator';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { ref, getDownloadURL } from "firebase/storage";
-import { storage } from "../firebaseConfig.js";
-import { processAndUploadFile, deleteFile } from "../middlewares/uploadMiddleware.js";
+// import { ref, getDownloadURL } from "firebase/storage";
+// import { storage } from "../firebaseConfig.js";
+// import { processAndUploadFile, deleteFile } from "../middlewares/uploadMiddleware.js";
+import { processAndUploadFile, deleteFile } from "../middlewares/firebaseAdminUpload.js";
+import { generateSignedUrl } from '../middlewares/firebaseAdminUpload.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,9 +22,10 @@ export const getEvents = async (req, res) => {
       events.map(async (event) => {
         let photoUrl = null;
         if (event.photo) {
-          const storageRef = ref(storage, event.photo);
+          // const storageRef = ref(storage, event.photo);
           try {
-            photoUrl = await getDownloadURL(storageRef);
+            // photoUrl = await getDownloadURL(storageRef);
+            photoUrl = await generateSignedUrl(event.photo)
           } catch (error) {
             if (error.code === 'storage/object-not-found') {
               console.warn(`File not found: ${event.photo}`);
@@ -65,9 +68,10 @@ export const getEventById = async (req, res) => {
 
     let photoUrl = null;
     if (event.photo) {
-      const storageRef = ref(storage, event.photo);
+      // const storageRef = ref(storage, event.photo);
       try {
-        photoUrl = await getDownloadURL(storageRef);
+        // photoUrl = await getDownloadURL(storageRef);
+        photoUrl = await generateSignedUrl(event.photo)
       } catch (error) {
         if (error.code === 'storage/object-not-found') {
           console.warn(`File not found: ${event.photo}`);
@@ -275,9 +279,10 @@ export const getParticipants = async (req, res) => {
     const participants = await Promise.all(event.EventParticipations.map(async participation => {
       let profilePictureUrl = null;
       if (participation.User.profile_picture) {
-        const storageRef = ref(storage, participation.User.profile_picture);
+        // const storageRef = ref(storage, participation.User.profile_picture);
         try {
-          profilePictureUrl = await getDownloadURL(storageRef);
+          // profilePictureUrl = await getDownloadURL(storageRef);
+          profilePictureUrl = await generateSignedUrl(participation.User.profile_picture);
         } catch (error) {
           if (error.code === 'storage/object-not-found') {
             console.warn(`File not found: ${participation.User.profile_picture}`);
